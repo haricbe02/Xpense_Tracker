@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XPENSE · Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg:#f7f6f2; --surface:#ffffff; --card:#ffffff;
+    --border:#e8e5df; --border-soft:#f0ede7;
+    --text:#1a1916; --muted:#9e9b95; --subtle:#c8c4bc;
+    --accent:#2d6a4f; --accent-light:#e8f4ee;
+    --accent2:#c9622f; --accent2-light:#fdf0eb;
+    --accent3:#4a6fa5; --accent3-light:#eef2f9;
+    --danger:#c0392b; --danger-light:#fdf2f1;
+    --warn:#d4820a; --warn-light:#fef6e7;
+    --shadow-sm:0 1px 3px rgba(26,25,22,.06),0 1px 2px rgba(26,25,22,.04);
+    --shadow-md:0 4px 12px rgba(26,25,22,.08),0 2px 4px rgba(26,25,22,.04);
+    --shadow-lg:0 12px 32px rgba(26,25,22,.10),0 4px 8px rgba(26,25,22,.06);
+    --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --transition:.18s ease;
+  }
+  [data-theme="dark"] {
+    --bg:#111110; --surface:#1c1c1a; --card:#1c1c1a;
+    --border:#2e2e2b; --border-soft:#252523;
+    --text:#e8e5df; --muted:#7a776f; --subtle:#4a4844;
+    --accent:#4ade80; --accent-light:#0d2416;
+    --accent2:#fb8c5c; --accent2-light:#2a1208;
+    --accent3:#7aabf0; --accent3-light:#0d1e33;
+    --danger:#f87171; --danger-light:#2a0d0d;
+    --warn:#fbbf24; --warn-light:#2a1f05;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.3);
+    --shadow-md:0 4px 12px rgba(0,0,0,.3);
+    --shadow-lg:0 12px 32px rgba(0,0,0,.4);
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background var(--transition),color var(--transition)}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);transition:background var(--transition),border-color var(--transition)}
+  .nav-inner{max-width:1080px;margin:0 auto;padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .logo{font-family:'Fraunces',serif;font-size:20px;font-weight:500;letter-spacing:-.3px;cursor:pointer;display:flex;align-items:baseline;gap:3px}
+  .logo .dot{color:var(--accent);font-size:28px;line-height:0;position:relative;top:3px}
+  .logo .tagline{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:400;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-left:8px}
+  .nav-center{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;gap:2px;box-shadow:var(--shadow-sm)}
+  .tab-btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:6px 18px;border-radius:7px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all var(--transition);display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .tab-btn.active{background:var(--text);color:var(--bg)}
+  .tab-btn:not(.active):hover{color:var(--text);background:var(--border-soft)}
+  .nav-right{display:flex;align-items:center;gap:8px}
+  .btn-ghost{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all var(--transition);white-space:nowrap}
+  .btn-ghost:hover{border-color:var(--text)}
+  .btn-primary{display:flex;align-items:center;gap:6px;background:var(--text);border:1px solid var(--text);color:var(--bg);padding:7px 16px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--transition);white-space:nowrap}
+  .btn-primary:hover{opacity:.85}
+  .theme-toggle{width:34px;height:34px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+  .theme-toggle:hover{border-color:var(--text)}
+
+  /* PAGES */
+  .page{display:none;max-width:1080px;margin:0 auto;padding:84px 28px 60px;animation:fadeUp .25s ease}
+  .page.active{display:block}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  .section-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+  .section-title{font-family:'Fraunces',serif;font-size:28px;font-weight:400;letter-spacing:-.5px;line-height:1.2}
+  .section-title em{font-style:italic;color:var(--accent)}
+  .section-sub{font-size:13px;color:var(--muted);margin-top:4px}
+
+  /* BUDGET BAR */
+  .budget-bar-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:20px;box-shadow:var(--shadow-sm)}
+  .budget-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+  .blabel{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .budget-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .budget-input-row span{color:var(--muted);font-size:12px}
+  .budget-input-row input{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:130px;outline:none;transition:border-color var(--transition)}
+  .budget-input-row input:focus{border-color:var(--accent)}
+  .budget-set-btn{background:var(--accent-light);border:1px solid transparent;color:var(--accent);padding:7px 14px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all var(--transition)}
+  .budget-set-btn:hover{background:var(--accent);color:var(--bg)}
+  .progress-track{background:var(--border-soft);border-radius:99px;height:6px;overflow:hidden;margin-bottom:10px}
+  .progress-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1),background .3s;background:var(--accent)}
+  .progress-fill.warn{background:var(--warn)} .progress-fill.danger{background:var(--danger)}
+  .budget-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .budget-stats .spent-pct{color:var(--text);font-weight:600}
+
+  /* CARDS */
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .p2-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+  .sc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px 20px;box-shadow:var(--shadow-sm);transition:border-color var(--transition),box-shadow var(--transition)}
+  .sc:hover{border-color:var(--subtle);box-shadow:var(--shadow-md)}
+  .sc .lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:500}
+  .sc .val{font-family:'Fraunces',serif;font-size:22px;font-weight:400;letter-spacing:-.5px}
+  .sc.c1 .val{color:var(--accent)} .sc.c2 .val{color:var(--accent2)}
+  .sc.c3 .val{color:var(--accent)} .sc.c3.over .val{color:var(--danger)}
+  .sc.c4 .val{color:var(--accent3)} .sc.c5 .val{color:var(--muted)}
+
+  /* HOME GRID */
+  .home-grid{display:grid;grid-template-columns:400px 1fr;gap:20px}
+  .form-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:26px;box-shadow:var(--shadow-sm);height:fit-content}
+  .card-title{font-family:'Fraunces',serif;font-size:16px;font-weight:400;letter-spacing:-.2px;margin-bottom:20px;color:var(--text)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color var(--transition),box-shadow var(--transition);-webkit-appearance:none;appearance:none}
+  .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
+  .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9b95' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  [data-theme="dark"] .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a776f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")}
+  .field select option{background:var(--surface)}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .add-btn{width:100%;background:var(--text);color:var(--bg);border:none;border-radius:var(--radius-sm);padding:12px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.2px;transition:all var(--transition);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .add-btn:hover{opacity:.82} .add-btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* RIGHT COL */
+  .right-col{display:flex;flex-direction:column;gap:16px}
+  .recent-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm)}
+  .recent-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border-soft)}
+  .view-all{font-size:11px;font-weight:500;color:var(--accent);background:none;border:none;cursor:pointer}
+  .view-all:hover{text-decoration:underline;text-underline-offset:3px}
+
+  /* TABLE */
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:var(--bg)}
+  th{text-align:left;padding:9px 16px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border)}
+  tbody tr{border-bottom:1px solid var(--border-soft);transition:background var(--transition)}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--border-soft)}
+  td{padding:11px 16px;font-size:13px;vertical-align:middle}
+  .amt{font-family:'Fraunces',serif;font-weight:400;color:var(--accent2);font-size:14px;letter-spacing:-.3px}
+  .dt{color:var(--muted);font-size:11px}
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+  .by-tag{font-size:10px;color:var(--muted);background:var(--border-soft);padding:2px 8px;border-radius:99px;font-weight:500;border:1px solid var(--border)}
+  .empty-mini{text-align:center;padding:32px;color:var(--muted);font-size:12px}
+
+  /* BREAKDOWN */
+  .breakdown-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm)}
+  .cat-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .cat-row .cn{width:96px;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cat-track{flex:1;background:var(--border-soft);border-radius:99px;height:5px;overflow:hidden}
+  .cat-fill{height:100%;border-radius:99px;transition:width .6s ease}
+  .cat-amt{font-size:12px;width:76px;text-align:right;font-family:'Fraunces',serif;font-weight:400;letter-spacing:-.2px}
+
+  /* PAGE 2 */
+  .list-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm)}
+  .list-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;background:var(--bg)}
+  .list-header h2{font-family:'Fraunces',serif;font-size:15px;font-weight:400;letter-spacing:-.2px}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .filters select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 28px 6px 10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer;transition:border-color var(--transition);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239e9b95' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  .filters select:focus{border-color:var(--accent)}
+  .clear-btn{font-size:11px;font-weight:500;color:var(--muted);background:none;border:1px solid var(--border);padding:5px 12px;border-radius:var(--radius-sm);cursor:pointer;transition:all var(--transition)}
+  .clear-btn:hover{color:var(--danger);border-color:var(--danger);background:var(--danger-light)}
+  .table-wrap{overflow-x:auto}
+  .del-btn{background:none;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:11px;transition:all var(--transition);display:flex;align-items:center;justify-content:center}
+  .del-btn:hover{background:var(--danger-light);border-color:var(--danger);color:var(--danger)}
+  .empty-state{text-align:center;padding:56px 24px;color:var(--muted)}
+  .empty-state .ico{font-size:28px;margin-bottom:10px;opacity:.5}
+  .empty-state p{font-size:13px}
+
+  /* DRAWER */
+  .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);z-index:100;opacity:0;pointer-events:none;transition:opacity .22s}
+  .drawer-overlay.open{opacity:1;pointer-events:all}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:95vw;background:var(--card);border-left:1px solid var(--border);z-index:101;padding:28px 26px;overflow-y:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:var(--shadow-lg)}
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}
+  .drawer-head h2{font-family:'Fraunces',serif;font-size:20px;font-weight:400}
+  .drawer-close{background:none;border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:14px;transition:all var(--transition);display:flex;align-items:center;justify-content:center}
+  .drawer-close:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-light)}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);padding:11px 18px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:all .25s ease;pointer-events:none;z-index:200;box-shadow:var(--shadow-lg)}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  /* SPINNER */
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:currentColor;border-radius:50%;animation:spin .65s linear infinite;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* AUTH */
+  #authWrap{position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:background var(--transition)}
+  #authWrap.hidden{display:none}
+  .auth-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px 36px;box-shadow:var(--shadow-lg);animation:fadeUp .3s ease}
+  .auth-logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;letter-spacing:-.4px;margin-bottom:6px}
+  .auth-logo span{color:var(--accent)}
+  .auth-sub{font-size:12px;color:var(--muted);margin-bottom:32px;letter-spacing:.2px}
+  .auth-title{font-family:'Fraunces',serif;font-size:20px;font-weight:400;letter-spacing:-.3px;margin-bottom:4px}
+  .auth-hint{font-size:12px;color:var(--muted);margin-bottom:24px}
+  .auth-error{font-size:12px;color:var(--danger);background:var(--danger-light);border:1px solid color-mix(in srgb,var(--danger) 20%,transparent);border-radius:var(--radius-sm);padding:9px 13px;margin-bottom:14px;display:none}
+  .auth-error.show{display:block}
+  .auth-switch{text-align:center;margin-top:20px;font-size:12px;color:var(--muted)}
+  .auth-switch button{background:none;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:'DM Sans',sans-serif}
+  .auth-switch button:hover{text-decoration:underline;text-underline-offset:3px}
+  .auth-theme{position:absolute;top:20px;right:20px;width:34px;height:34px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+  .auth-theme:hover{border-color:var(--text)}
+  .pass-wrap{position:relative}
+  .pass-wrap input{padding-right:40px}
+  .pass-eye{position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px}
+  .pass-eye:hover{color:var(--text)}
+
+  /* WELCOME */
+  #welcomeWrap{position:fixed;inset:0;z-index:290;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+  #welcomeWrap.show{display:flex;animation:fadeUp .35s ease}
+  .welcome-icon{font-size:48px;margin-bottom:20px}
+  .welcome-title{font-family:'Fraunces',serif;font-size:32px;font-weight:400;letter-spacing:-.6px;margin-bottom:8px;line-height:1.2}
+  .welcome-title em{font-style:italic;color:var(--accent)}
+  .welcome-sub{font-size:13px;color:var(--muted);margin-bottom:32px}
+  .welcome-bar{width:180px;height:3px;background:var(--border);border-radius:99px;overflow:hidden}
+  .welcome-bar-fill{height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width 1.8s cubic-bezier(.4,0,.2,1)}
+
+  /* SETTINGS */
+  .settings-wrap{position:relative}
+  .settings-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+  .settings-btn:hover{border-color:var(--text)}
+  .settings-menu{position:absolute;top:calc(100% + 8px);right:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);padding:6px;min-width:190px;box-shadow:var(--shadow-lg);z-index:60;display:none;animation:fadeUp .18s ease}
+  .settings-menu.open{display:block}
+  .settings-item{width:100%;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:background var(--transition);text-align:left}
+  .settings-item:hover{background:var(--border-soft)}
+  .settings-item.danger{color:var(--danger)}
+  .settings-item.danger:hover{background:var(--danger-light)}
+  .settings-divider{height:1px;background:var(--border);margin:4px 0}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+
+  @media(max-width:900px){
+    .home-grid{grid-template-columns:1fr}
+    .summary,.p2-summary{grid-template-columns:repeat(2,1fr)}
+    .tab-label{display:none}
+    .logo .tagline{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authWrap">
+  <button class="auth-theme" onclick="toggleTheme()" id="authThemeBtn">☀</button>
+  <div class="auth-card" id="loginPanel">
+    <div class="auth-logo">Xpense<span>.</span></div>
+    <div class="auth-sub">Shared expense tracker</div>
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-hint">Sign in to your shared tracker</div>
+    <div class="auth-error" id="loginError"></div>
+    <div class="field"><label>Username</label><input type="text" id="loginUser" placeholder="Your username" autocomplete="username"/></div>
+    <div class="field"><label>Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="loginPass" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <button class="pass-eye" onclick="togglePass('loginPass',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <button class="add-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="auth-switch">No account yet? <button onclick="switchAuth('register')">Create one</button></div>
+  </div>
+  <div class="auth-card" id="registerPanel" style="display:none">
+    <div class="auth-logo">Xpense<span>.</span></div>
+    <div class="auth-sub">Shared expense tracker</div>
+    <div class="auth-title">Create account</div>
+    <div class="auth-hint">Join your shared expense tracker (max 2 users)</div>
+    <div class="auth-error" id="registerError"></div>
+    <div class="field"><label>Username</label><input type="text" id="regUser" placeholder="Choose a username" autocomplete="username"/></div>
+    <div class="field"><label>Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="regPass" placeholder="Create a password" autocomplete="new-password"/>
+        <button class="pass-eye" onclick="togglePass('regPass',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <div class="field"><label>Confirm Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="regPass2" placeholder="Repeat your password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/>
+        <button class="pass-eye" onclick="togglePass('regPass2',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+    <button class="add-btn" id="registerBtn" onclick="doRegister()">Create Account</button>
+    <div class="auth-switch">Already have an account? <button onclick="switchAuth('login')">Sign in</button></div>
+  </div>
+</div>
+
+<!-- WELCOME -->
+<div id="welcomeWrap">
+  <div class="welcome-icon">👋</div>
+  <div class="welcome-title">Hello, <em id="welcomeName"></em></div>
+  <div class="welcome-sub">Your shared expenses are ready.</div>
+  <div class="welcome-bar"><div class="welcome-bar-fill" id="welcomeBarFill"></div></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo" onclick="showPage('p1')">Xpense<span class="dot">.</span><span class="tagline">Shared Tracker</span></div>
+    <div class="nav-center">
+      <button class="tab-btn active" onclick="showPage('p1')" id="tab-p1">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="4.5" height="4.5" rx="1"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1"/></svg>
+        <span class="tab-label">Overview</span>
+      </button>
+      <button class="tab-btn" onclick="showPage('p2')" id="tab-p2">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 3.5h9M2 6.5h9M2 9.5h5"/></svg>
+        <span class="tab-label">All Expenses</span>
+      </button>
+    </div>
+    <div class="nav-right">
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀</button>
+      <button class="btn-ghost" onclick="openDrawer()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 1v10M1 6h10"/></svg>Add
+      </button>
+      <button class="btn-ghost" onclick="exportToExcel()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 1v7M3.5 6l2.5 2.5L8.5 6M2 10h8"/></svg>Export
+      </button>
+      <div class="settings-wrap" id="settingsWrap">
+        <button class="settings-btn" onclick="toggleSettings()"><div class="avatar" id="navAvatar">–</div></button>
+        <div class="settings-menu" id="settingsMenu">
+          <div style="padding:8px 12px 6px;border-bottom:1px solid var(--border);margin-bottom:4px">
+            <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Signed in as</div>
+            <div style="font-size:13px;font-weight:600" id="menuUsername">–</div>
+          </div>
+          <button class="settings-item" onclick="toggleTheme();toggleSettings()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><path d="M7 1v1M7 12v1M1 7h1M12 7h1M2.9 2.9l.7.7M10.4 10.4l.7.7M2.9 11.1l.7-.7M10.4 3.6l.7-.7"/></svg>
+            Toggle theme
+          </button>
+          <div class="settings-divider"></div>
+          <button class="settings-item danger" onclick="doLogout()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h3M9 10l3-3-3-3M13 7H5"/></svg>
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head"><h2>Add Expense</h2><button class="drawer-close" onclick="closeDrawer()">✕</button></div>
+  <div class="field"><label>Description</label><input type="text" id="d-desc" placeholder="e.g. Lunch at Meghana Foods"/></div>
+  <div class="row-2">
+    <div class="field"><label>Amount (₹)</label><input type="number" id="d-amount" placeholder="0.00" min="0" step="0.01"/></div>
+    <div class="field"><label>Date</label><input type="date" id="d-date"/></div>
+  </div>
+  <div class="row-2">
+    <div class="field"><label>Category</label>
+      <select id="d-category">
+        <option value="Food">🍜 Food</option><option value="Grocery">🛒 Grocery</option>
+        <option value="Transport">🚌 Transport</option><option value="Shopping">🛍️ Shopping</option>
+        <option value="Health">🏥 Health</option><option value="Entertainment">🎬 Entertainment</option>
+        <option value="Utilities">💡 Utilities</option><option value="Education">📚 Education</option>
+        <option value="Other">📦 Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Payment</label>
+      <select id="d-payment">
+        <option value="UPI">UPI</option><option value="Cash">Cash</option>
+        <option value="Card">Card</option><option value="Net Banking">Net Banking</option>
+      </select>
+    </div>
+  </div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="d-notes" placeholder="Any extra details…"/></div>
+  <button class="add-btn" id="drawerAddBtn" onclick="addExpense()">Add Expense</button>
+</div>
+
+<!-- PAGE 1: OVERVIEW -->
+<div class="page active" id="p1">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Your <em>spending</em>,<br>at a glance</div>
+      <div class="section-sub">Shared with your friend · Synced in real-time</div>
+    </div>
+  </div>
+  <div class="summary">
+    <div class="sc c2"><div class="lbl">Total Spent</div><div class="val" id="totalAll">₹0</div></div>
+    <div class="sc c3" id="balCard"><div class="lbl">Balance</div><div class="val" id="balDisplay">₹–</div></div>
+    <div class="sc c4"><div class="lbl">This Month</div><div class="val" id="totalMonth">₹0</div></div>
+    <div class="sc c5"><div class="lbl">Entries</div><div class="val" id="totalCount">0</div></div>
+  </div>
+  <div class="home-grid">
+    <div class="form-card">
+      <div class="card-title">New Expense</div>
+      <div class="field"><label>Description</label><input type="text" id="i-desc" placeholder="e.g. Groceries at D-Mart"/></div>
+      <div class="row-2">
+        <div class="field"><label>Amount (₹)</label><input type="number" id="i-amount" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="field"><label>Date</label><input type="date" id="i-date"/></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Category</label>
+          <select id="i-category">
+            <option value="Food">🍜 Food</option><option value="Grocery">🛒 Grocery</option>
+            <option value="Transport">🚌 Transport</option><option value="Shopping">🛍️ Shopping</option>
+            <option value="Health">🏥 Health</option><option value="Entertainment">🎬 Entertainment</option>
+            <option value="Utilities">💡 Utilities</option><option value="Education">📚 Education</option>
+            <option value="Other">📦 Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Payment</label>
+          <select id="i-payment">
+            <option value="UPI">UPI</option><option value="Cash">Cash</option>
+            <option value="Card">Card</option><option value="Net Banking">Net Banking</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Notes (optional)</label><input type="text" id="i-notes" placeholder="Any extra details…"/></div>
+      <button class="add-btn" id="inlineAddBtn" onclick="addExpenseInline()">Add Expense</button>
+    </div>
+    <div class="right-col">
+      <div class="recent-card">
+        <div class="recent-head">
+          <div class="card-title" style="margin:0;font-size:14px">Recent</div>
+          <button class="view-all" onclick="showPage('p2')">View all →</button>
+        </div>
+        <table>
+          <thead><tr><th>Description</th><th>Category</th><th>Amount</th><th>By</th><th>Date</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+        <div class="empty-mini" id="recentEmpty">No expenses yet — add one!</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="card-title" style="margin-bottom:16px;font-size:14px">By Category</div>
+        <div id="catBreakdown"><p style="color:var(--muted);font-size:12px">No data yet.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: ALL EXPENSES -->
+<div class="page" id="p2">
+  <div class="section-header">
+    <div>
+      <div class="section-title">All <em>Expenses</em></div>
+      <div class="section-sub">Full shared transaction history</div>
+    </div>
+    <button class="btn-primary" onclick="openDrawer()">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 1v10M1 6h10"/></svg>Add Expense
+    </button>
+  </div>
+  <div class="budget-bar-wrap">
+    <div class="budget-bar-top">
+      <span class="blabel">Shared Monthly Budget</span>
+      <div class="budget-input-row" id="budgetInputRow">
+        <span>Set ₹</span>
+        <input type="number" id="budgetInput" placeholder="e.g. 10,000" min="0" step="100"/>
+        <button class="budget-set-btn" onclick="setBudget()">Save</button>
+      </div>
+      <div id="budgetEditRow" style="display:none;align-items:center;gap:10px">
+        <span style="font-size:12px;color:var(--muted)">Budget: <strong id="budgetDisplayEdit" style="color:var(--text)"></strong></span>
+        <button class="budget-set-btn" onclick="showBudgetInput()">Edit</button>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="budget-stats">
+      <span>₹<span id="budgetSpentBar">0.00</span> spent</span>
+      <span class="spent-pct" id="spentPct">–</span>
+      <span>₹<span id="budgetBalBar">–</span> remaining</span>
+    </div>
+  </div>
+  <div class="p2-summary">
+    <div class="sc c1"><div class="lbl">Budget</div><div class="val" id="budgetDisplay">₹–</div></div>
+    <div class="sc c2"><div class="lbl">Total Spent</div><div class="val" id="p2-total">₹0</div></div>
+    <div class="sc c3" id="p2-balCard"><div class="lbl">Balance</div><div class="val" id="p2-balance">₹–</div></div>
+    <div class="sc c4"><div class="lbl">This Month</div><div class="val" id="p2-month">₹0</div></div>
+    <div class="sc c5"><div class="lbl">Entries</div><div class="val" id="p2-count">0</div></div>
+  </div>
+  <div class="list-card">
+    <div class="list-header">
+      <h2>Transactions</h2>
+      <div class="filters">
+        <select id="fCat" onchange="renderTable()">
+          <option value="">All Categories</option>
+          <option value="Food">Food</option><option value="Grocery">Grocery</option>
+          <option value="Transport">Transport</option><option value="Shopping">Shopping</option>
+          <option value="Health">Health</option><option value="Entertainment">Entertainment</option>
+          <option value="Utilities">Utilities</option><option value="Education">Education</option>
+          <option value="Other">Other</option>
+        </select>
+        <select id="fMonth" onchange="renderTable()"><option value="">All Time</option></select>
+        <select id="fPay" onchange="renderTable()">
+          <option value="">All Payments</option>
+          <option value="UPI">UPI</option><option value="Cash">Cash</option>
+          <option value="Card">Card</option><option value="Net Banking">Net Banking</option>
+        </select>
+        <select id="fUser" onchange="renderTable()"><option value="">All Members</option></select>
+        <button class="clear-btn" onclick="clearFilters()">Clear</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Payment</th><th>Added by</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none">
+        <div class="ico">📋</div><p>No expenses match your filters.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ══ SUPABASE ══
+  const SUPA_URL = 'https://efrjloumhefzyunktpqu.supabase.co';
+  const SUPA_KEY = 'sb_publishable_d3zspq-nn3x7pd2ueHZWsQ_S0lgDZdB';
+  const H = {
+    'Content-Type':  'application/json',
+    'apikey':        SUPA_KEY,
+    'Authorization': 'Bearer ' + SUPA_KEY
+  };
+
+  const sb = {
+    async get(table, qs = '') {
+      const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, { headers: H });
+      return r.json();
+    },
+    async post(table, body) {
+      const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=representation' },
+        body: JSON.stringify(body)
+      });
+      return r.json();
+    },
+    async patch(table, qs, body) {
+      await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(body)
+      });
+    },
+    async del(table, qs) {
+      await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'DELETE', headers: H });
+    }
+  };
+
+  // ══ STATE ══
+  let expenses    = [];
+  let currentUser = null;
+  let sharedBudget = 0;
+
+  const CS = {
+    'Food':          { bg:'rgba(201,98,47,.1)',  c:'#c9622f', i:'🍜', b:'#c9622f' },
+    'Grocery':       { bg:'rgba(45,106,79,.1)',  c:'#2d6a4f', i:'🛒', b:'#2d6a4f' },
+    'Transport':     { bg:'rgba(74,111,165,.1)', c:'#4a6fa5', i:'🚌', b:'#4a6fa5' },
+    'Shopping':      { bg:'rgba(124,82,160,.1)', c:'#7c52a0', i:'🛍️', b:'#7c52a0' },
+    'Health':        { bg:'rgba(32,140,100,.1)', c:'#208c64', i:'🏥', b:'#208c64' },
+    'Entertainment': { bg:'rgba(192,57,43,.1)',  c:'#c0392b', i:'🎬', b:'#c0392b' },
+    'Utilities':     { bg:'rgba(212,130,10,.1)', c:'#d4820a', i:'💡', b:'#d4820a' },
+    'Education':     { bg:'rgba(44,100,160,.1)', c:'#2c64a0', i:'📚', b:'#2c64a0' },
+    'Other':         { bg:'rgba(120,120,120,.1)',c:'#808080', i:'📦', b:'#808080' },
+  };
+
+  // ══ THEME ══
+  function toggleTheme() {
+    const html  = document.documentElement;
+    const next  = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    const icon  = next === 'dark' ? '☾' : '☀';
+    document.getElementById('themeBtn').textContent     = icon;
+    document.getElementById('authThemeBtn').textContent = icon;
+    localStorage.setItem('xpense_theme', next);
+  }
+  (() => {
+    const t    = localStorage.getItem('xpense_theme') || 'light';
+    const icon = t === 'dark' ? '☾' : '☀';
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('themeBtn').textContent     = icon;
+    document.getElementById('authThemeBtn').textContent = icon;
+  })();
+
+  // ══ UTILS ══
+  const fmt = n => Number(n).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  function setBtnState(id, loading, label) {
+    const b = document.getElementById(id); if (!b) return;
+    b.disabled   = loading;
+    b.innerHTML  = loading ? `<span class="spinner"></span> ${label}` : label;
+  }
+
+  // ══ NAV ══
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.getElementById('tab-' + id).classList.add('active');
+    if (id === 'p2') { populateMonthFilter(); populateUserFilter(); renderTable(); }
+    if (id === 'p1') { renderRecent(); renderBreakdown(); }
+  }
+
+  // ══ DRAWER ══
+  function openDrawer()  {
+    document.getElementById('d-date').valueAsDate = new Date();
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('drawer').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('drawer').classList.remove('open');
+  }
+
+  // ══ LOAD FROM SUPABASE ══
+  async function loadExpenses() {
+    const data = await sb.get('expenses', 'order=created_at.desc');
+    expenses   = Array.isArray(data) ? data : [];
+  }
+  async function loadBudget() {
+    const data   = await sb.get('budget', 'id=eq.1&select=amount');
+    sharedBudget = data && data[0] ? parseFloat(data[0].amount) : 0;
+  }
+
+  // ══ ADD (inline) ══
+  async function addExpenseInline() {
+    const description = document.getElementById('i-desc').value.trim();
+    const amount      = parseFloat(document.getElementById('i-amount').value);
+    const date        = document.getElementById('i-date').value;
+    const category    = document.getElementById('i-category').value;
+    const payment     = document.getElementById('i-payment').value;
+    const notes       = document.getElementById('i-notes').value.trim();
+    if (!description || !amount || !date) { showToast('Fill in description, amount & date'); return; }
+    if (amount <= 0) { showToast('Amount must be positive'); return; }
+    setBtnState('inlineAddBtn', true, 'Saving…');
+    const res = await sb.post('expenses', { description, amount, date, category, payment, notes, added_by: currentUser });
+    setBtnState('inlineAddBtn', false, 'Add Expense');
+    if (Array.isArray(res) && res.length) {
+      expenses.unshift(res[0]);
+      document.getElementById('i-desc').value  = '';
+      document.getElementById('i-amount').value = '';
+      document.getElementById('i-notes').value  = '';
+      document.getElementById('i-date').valueAsDate = new Date();
+      refresh(); showToast('✓ Expense added');
+    } else { showToast('Error saving — try again'); }
+  }
+
+  // ══ ADD (drawer) ══
+  async function addExpense() {
+    const description = document.getElementById('d-desc').value.trim();
+    const amount      = parseFloat(document.getElementById('d-amount').value);
+    const date        = document.getElementById('d-date').value;
+    const category    = document.getElementById('d-category').value;
+    const payment     = document.getElementById('d-payment').value;
+    const notes       = document.getElementById('d-notes').value.trim();
+    if (!description || !amount || !date) { showToast('Fill in description, amount & date'); return; }
+    if (amount <= 0) { showToast('Amount must be positive'); return; }
+    setBtnState('drawerAddBtn', true, 'Saving…');
+    const res = await sb.post('expenses', { description, amount, date, category, payment, notes, added_by: currentUser });
+    setBtnState('drawerAddBtn', false, 'Add Expense');
+    if (Array.isArray(res) && res.length) {
+      expenses.unshift(res[0]);
+      document.getElementById('d-desc').value   = '';
+      document.getElementById('d-amount').value  = '';
+      document.getElementById('d-notes').value   = '';
+      closeDrawer(); refresh(); renderTable(); showToast('✓ Expense added');
+    } else { showToast('Error saving — try again'); }
+  }
+
+  // ══ DELETE (own entries only) ══
+  async function deleteExpense(id) {
+    await sb.del('expenses', `id=eq.${id}`);
+    expenses = expenses.filter(e => e.id !== id);
+    refresh(); renderTable(); showToast('🗑 Deleted');
+  }
+
+  function refresh() { updateSummary(); renderRecent(); renderBreakdown(); }
+
+  // ══ RECENT ══
+  function renderRecent() {
+    const tbody = document.getElementById('recentBody');
+    const empty = document.getElementById('recentEmpty');
+    const recent = expenses.slice(0, 6);
+    if (!recent.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = recent.map(e => {
+      const cs = CS[e.category] || CS['Other'];
+      const d  = new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+      return `<tr>
+        <td>${e.description}</td>
+        <td><span class="pill" style="background:${cs.bg};color:${cs.c}">${cs.i} ${e.category}</span></td>
+        <td class="amt">₹${fmt(e.amount)}</td>
+        <td><span class="by-tag">${e.added_by}</span></td>
+        <td class="dt">${d}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ══ BREAKDOWN ══
+  function renderBreakdown() {
+    const el = document.getElementById('catBreakdown');
+    if (!expenses.length) { el.innerHTML = '<p style="color:var(--muted);font-size:12px">No data yet.</p>'; return; }
+    const tot = {};
+    expenses.forEach(e => tot[e.category] = (tot[e.category] || 0) + parseFloat(e.amount));
+    const grand = Object.values(tot).reduce((a, b) => a + b, 0);
+    el.innerHTML = Object.entries(tot).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => {
+      const cs  = CS[cat] || CS['Other'];
+      const pct = (amt / grand * 100).toFixed(1);
+      return `<div class="cat-row">
+        <span class="cn">${cs.i} ${cat}</span>
+        <div class="cat-track"><div class="cat-fill" style="width:${pct}%;background:${cs.b}"></div></div>
+        <span class="cat-amt" style="color:${cs.c}">₹${fmt(amt)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ══ TABLE ══
+  function getFiltered() {
+    const cat  = document.getElementById('fCat').value;
+    const mo   = document.getElementById('fMonth').value;
+    const pay  = document.getElementById('fPay').value;
+    const user = document.getElementById('fUser').value;
+    return expenses.filter(e =>
+      (!cat  || e.category === cat) &&
+      (!mo   || e.date.startsWith(mo)) &&
+      (!pay  || e.payment  === pay) &&
+      (!user || e.added_by === user)
+    );
+  }
+
+  function renderTable() {
+    const tbody    = document.getElementById('tableBody');
+    const empty    = document.getElementById('emptyState');
+    const filtered = getFiltered();
+    if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = filtered.map((e, i) => {
+      const cs    = CS[e.category] || CS['Other'];
+      const d     = new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+      const canDel = e.added_by === currentUser;
+      return `<tr>
+        <td style="color:var(--muted);font-size:11px">${i + 1}</td>
+        <td>${e.description}</td>
+        <td><span class="pill" style="background:${cs.bg};color:${cs.c}">${cs.i} ${e.category}</span></td>
+        <td class="amt">₹${fmt(e.amount)}</td>
+        <td class="dt">${d}</td>
+        <td style="color:var(--muted);font-size:12px">${e.payment}</td>
+        <td><span class="by-tag">${e.added_by}</span></td>
+        <td style="color:var(--muted);font-size:12px">${e.notes || '–'}</td>
+        <td>${canDel ? `<button class="del-btn" onclick="deleteExpense('${e.id}')">✕</button>` : ''}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function clearFilters() {
+    ['fCat','fMonth','fPay','fUser'].forEach(id => document.getElementById(id).value = '');
+    renderTable();
+  }
+
+  function populateMonthFilter() {
+    const sel = document.getElementById('fMonth'), cur = sel.value;
+    const months = [...new Set(expenses.map(e => e.date.substring(0,7)))].sort().reverse();
+    sel.innerHTML = '<option value="">All Time</option>' + months.map(m => {
+      const [y, mo] = m.split('-');
+      return `<option value="${m}"${m===cur?' selected':''}>${new Date(y,mo-1).toLocaleString('en-IN',{month:'short',year:'numeric'})}</option>`;
+    }).join('');
+  }
+
+  function populateUserFilter() {
+    const sel   = document.getElementById('fUser'), cur = sel.value;
+    const users = [...new Set(expenses.map(e => e.added_by))].sort();
+    sel.innerHTML = '<option value="">All Members</option>' + users.map(u =>
+      `<option value="${u}"${u===cur?' selected':''}>${u}</option>`
+    ).join('');
+  }
+
+  // ══ SUMMARY ══
+  function updateSummary() {
+    const total   = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const now     = new Date();
+    const ym      = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const month   = expenses.filter(e => e.date.startsWith(ym)).reduce((s,e) => s+parseFloat(e.amount), 0);
+    const balance = sharedBudget > 0 ? sharedBudget - total : null;
+
+    document.getElementById('totalAll').textContent   = '₹' + fmt(total);
+    document.getElementById('totalMonth').textContent = '₹' + fmt(month);
+    document.getElementById('totalCount').textContent = expenses.length;
+    document.getElementById('p2-total').textContent   = '₹' + fmt(total);
+    document.getElementById('p2-month').textContent   = '₹' + fmt(month);
+    document.getElementById('p2-count').textContent   = expenses.length;
+
+    if (sharedBudget > 0) {
+      const pct = Math.min((total / sharedBudget) * 100, 100);
+      document.getElementById('budgetDisplay').textContent     = '₹' + fmt(sharedBudget);
+      document.getElementById('budgetDisplayEdit').textContent = '₹' + fmt(sharedBudget);
+      document.getElementById('balDisplay').textContent        = (balance >= 0 ? '₹' : '-₹') + fmt(Math.abs(balance));
+      document.getElementById('p2-balance').textContent        = (balance >= 0 ? '₹' : '-₹') + fmt(Math.abs(balance));
+      document.getElementById('budgetSpentBar').textContent    = fmt(total);
+      document.getElementById('budgetBalBar').textContent      = fmt(Math.max(balance, 0));
+      document.getElementById('spentPct').textContent          = ((total/sharedBudget)*100).toFixed(1) + '%';
+      const fill = document.getElementById('progressFill');
+      fill.style.width = pct + '%';
+      fill.className   = 'progress-fill' + (pct>=90?' danger':pct>=70?' warn':'');
+      const cls = 'sc c3' + (balance < 0 ? ' over' : '');
+      document.getElementById('balCard').className    = cls;
+      document.getElementById('p2-balCard').className = cls;
+    } else {
+      ['budgetDisplay','balDisplay','p2-balance'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='₹–'; });
+      document.getElementById('budgetSpentBar').textContent = fmt(total);
+      document.getElementById('budgetBalBar').textContent   = '–';
+      document.getElementById('spentPct').textContent       = '–';
+      document.getElementById('progressFill').style.width   = '0%';
+    }
+  }
+
+  // ══ BUDGET (shared via Supabase) ══
+  async function setBudget() {
+    const val = parseFloat(document.getElementById('budgetInput').value);
+    if (!val || val <= 0) { showToast('Enter a valid budget'); return; }
+    await sb.patch('budget', 'id=eq.1', { amount: val });
+    sharedBudget = val;
+    document.getElementById('budgetInput').value       = '';
+    document.getElementById('budgetInput').placeholder = '₹' + val.toLocaleString('en-IN');
+    toggleBudgetUI(true);
+    updateSummary();
+    showToast('✓ Budget updated to ₹' + val.toLocaleString('en-IN'));
+  }
+  function showBudgetInput() { toggleBudgetUI(false); document.getElementById('budgetInput').focus(); }
+  function toggleBudgetUI(set) {
+    document.getElementById('budgetInputRow').style.display = set ? 'none' : 'flex';
+    document.getElementById('budgetEditRow').style.display  = set ? 'flex' : 'none';
+  }
+
+  // ══ EXPORT ══
+  function exportToExcel() {
+    if (!expenses.length) { showToast('No data to export'); return; }
+    const wb    = XLSX.utils.book_new();
+    const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const data  = [['#','Description','Category','Amount (₹)','Date','Payment','Added By','Notes']];
+    [...expenses].reverse().forEach((e,i) => data.push([i+1, e.description, e.category, e.amount, e.date, e.payment, e.added_by, e.notes||'']));
+    data.push([],['','','Total Spent',total]);
+    if (sharedBudget > 0) { data.push(['','','Budget',sharedBudget]); data.push(['','','Balance',sharedBudget-total]); }
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:4},{wch:28},{wch:14},{wch:14},{wch:14},{wch:13},{wch:13},{wch:24}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+    const catTot = {};
+    expenses.forEach(e => catTot[e.category] = (catTot[e.category]||0) + parseFloat(e.amount));
+    const s2 = [['Category','Total (₹)','% of Spend']];
+    Object.entries(catTot).sort((a,b)=>b[1]-a[1]).forEach(([cat,amt]) => s2.push([cat, amt, ((amt/total)*100).toFixed(1)+'%']));
+    s2.push(['Grand Total', total, '100%']);
+    const ws2 = XLSX.utils.aoa_to_sheet(s2);
+    ws2['!cols'] = [{wch:18},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Category Summary');
+    XLSX.writeFile(wb, `xpense_${new Date().toISOString().split('T')[0]}.xlsx`);
+    showToast('✓ Excel downloaded');
+  }
+
+  // ══ AUTH ══
+  function hashPass(p) {
+    let h = 5381;
+    for (let i = 0; i < p.length; i++) h = ((h<<5)+h) ^ p.charCodeAt(i);
+    return (h>>>0).toString(16);
+  }
+  function switchAuth(panel) {
+    document.getElementById('loginPanel').style.display    = panel==='login'    ? '' : 'none';
+    document.getElementById('registerPanel').style.display = panel==='register' ? '' : 'none';
+    document.getElementById('loginError').classList.remove('show');
+    document.getElementById('registerError').classList.remove('show');
+  }
+  function togglePass(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type  = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'text' ? '🙈' : '👁';
+  }
+  function showAuthError(id, msg) {
+    const el = document.getElementById(id); el.textContent = msg; el.classList.add('show');
+  }
+
+  async function doLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    if (!user || !pass) { showAuthError('loginError','Please enter username and password.'); return; }
+    setBtnState('loginBtn', true, 'Signing in…');
+    const rows = await sb.get('users', `username=eq.${encodeURIComponent(user)}&select=username,password_hash`);
+    setBtnState('loginBtn', false, 'Sign In');
+    if (!rows || !rows.length || rows[0].password_hash !== hashPass(pass)) {
+      showAuthError('loginError','Incorrect username or password.'); return;
+    }
+    sessionStorage.setItem('xpense_session', rows[0].username);
+    showWelcome(rows[0].username);
+  }
+
+  async function doRegister() {
+    const user  = document.getElementById('regUser').value.trim();
+    const pass  = document.getElementById('regPass').value;
+    const pass2 = document.getElementById('regPass2').value;
+    if (!user)           { showAuthError('registerError','Username is required.'); return; }
+    if (user.length < 3) { showAuthError('registerError','Username must be at least 3 characters.'); return; }
+    if (!pass)           { showAuthError('registerError','Password is required.'); return; }
+    if (pass.length < 4) { showAuthError('registerError','Password must be at least 4 characters.'); return; }
+    if (pass !== pass2)  { showAuthError('registerError','Passwords do not match.'); return; }
+    setBtnState('registerBtn', true, 'Creating…');
+    const existing = await sb.get('users', `username=eq.${encodeURIComponent(user)}&select=username`);
+    if (existing && existing.length) {
+      setBtnState('registerBtn', false, 'Create Account');
+      showAuthError('registerError','Username already taken. Choose another.'); return;
+    }
+    const allUsers = await sb.get('users', 'select=username');
+    if (allUsers && allUsers.length >= 2) {
+      setBtnState('registerBtn', false, 'Create Account');
+      showAuthError('registerError','This tracker already has 2 users. Ask your friend for their username.'); return;
+    }
+    const res = await sb.post('users', { username: user, password_hash: hashPass(pass) });
+    setBtnState('registerBtn', false, 'Create Account');
+    if (Array.isArray(res) && res.length) {
+      sessionStorage.setItem('xpense_session', user);
+      showWelcome(user);
+    } else {
+      showAuthError('registerError','Registration failed — try again.');
+    }
+  }
+
+  function showWelcome(username) {
+    document.getElementById('authWrap').classList.add('hidden');
+    const ww = document.getElementById('welcomeWrap');
+    document.getElementById('welcomeName').textContent = username;
+    ww.classList.add('show');
+    setTimeout(() => { document.getElementById('welcomeBarFill').style.width = '100%'; }, 60);
+    setTimeout(() => { ww.classList.remove('show'); enterApp(username); }, 2100);
+  }
+
+  async function enterApp(username) {
+    currentUser = username;
+    document.getElementById('navAvatar').textContent    = username.charAt(0).toUpperCase();
+    document.getElementById('menuUsername').textContent = username;
+    document.getElementById('i-date').valueAsDate = new Date();
+    document.getElementById('d-date').valueAsDate = new Date();
+    await Promise.all([loadExpenses(), loadBudget()]);
+    if (sharedBudget > 0) {
+      document.getElementById('budgetInput').placeholder = '₹' + sharedBudget.toLocaleString('en-IN');
+      toggleBudgetUI(true);
+    }
+    refresh();
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem('xpense_session');
+    currentUser = null; expenses = []; sharedBudget = 0;
+    toggleSettings();
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginError').classList.remove('show');
+    switchAuth('login');
+    document.getElementById('authWrap').classList.remove('hidden');
+    showToast('Signed out');
+  }
+
+  function toggleSettings() { document.getElementById('settingsMenu').classList.toggle('open'); }
+  document.addEventListener('click', e => {
+    const w = document.getElementById('settingsWrap');
+    if (w && !w.contains(e.target)) document.getElementById('settingsMenu').classList.remove('open');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeDrawer(); document.getElementById('settingsMenu').classList.remove('open'); }
+  });
+
+  // ══ INIT ══
+  const _s = sessionStorage.getItem('xpense_session');
+  if (_s) { document.getElementById('authWrap').classList.add('hidden'); enterApp(_s); }
+</script>
+</body>
+</html>
